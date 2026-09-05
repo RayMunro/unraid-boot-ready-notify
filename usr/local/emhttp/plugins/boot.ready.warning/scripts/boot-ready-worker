@@ -1,0 +1,80 @@
+#!/bin/bash
+set -u
+
+PLUGIN="boot.ready.warning"
+RUN_DIR="${BOOT_READY_RUN_DIR:-/run/$PLUGIN}"
+MARKER="$RUN_DIR/notified"
+LOCK_DIR="$RUN_DIR/worker.lock"
+DOCKER_SOCKET="${BOOT_READY_DOCKER_SOCKET:-/var/run/docker.sock}"
+DOCKER_CMD="${BOOT_READY_DOCKER_CMD:-/usr/bin/docker}"
+NOTIFY_CMD="${BOOT_READY_NOTIFY_CMD:-/usr/local/emhttp/webGui/scripts/notify}"
+DOCKER_CFG="${BOOT_READY_DOCKER_CFG:-/boot/config/docker.cfg}"
+WAIT_SECONDS="${BOOT_READY_WAIT_SECONDS:-600}"
+POLL_SECONDS="${BOOT_READY_POLL_SECONDS:-2}"
+HOST="$(hostname -s 2>/dev/null || hostname)"
+
+mkdir -p "$RUN_DIR"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  exit 0
+fi
+trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+
+[[ -e "$MARKER" ]] && exit 0
+
+if [[ -r "$DOCKER_CFG" ]]; then
+  docker_enabled="$(awk -F'=' '/^DOCKER_ENABLED=/{gsub(/["\047[:space:]]/,"",$2); print tolower($2); exit}' "$DOCKER_CFG" 2>/dev/null)"
+  if [[ -n "$docker_enabled" && "$docker_enabled" != "yes" ]]; then
+    logger -t boot-ready-warning "Unraid started event received, but Docker is disabled; no ready notification sent"
+    exit 0
+  fi
+fi
+
+logger -t boot-ready-warning "Unraid started event received; waiting for Docker readiness"
+
+deadline=$(( $(date +%s) + WAIT_SECONDS ))
+docker_ready=0
+while (( $(date +%s) <= deadline )); do
+  if [[ -S "$DOCKER_SOCKET" && -x "$DOCKER_CMD" ]] && "$DOCKER_CMD" info >/dev/null 2>&1; then
+    docker_ready=1
+    break
+  fi
+  sleep "$POLL_SECONDS"
+done
+
+if (( docker_ready != 1 )); then
+  logger -t boot-ready-warning "Docker did not become ready within ${WAIT_SECONDS}s; no ready notification sent"
+  exit 0
+fi
+
+if [[ ! -x "$NOTIFY_CMD" ]]; then
+  logger -t boot-ready-warning "Unraid notify command not found: $NOTIFY_CMD"
+  exit 0
+fi
+
+uptime_seconds="$(cut -d. -f1 /proc/uptime 2>/dev/null || echo 0)"
+if [[ "$uptime_seconds" =~ ^[0-9]+$ ]]; then
+  mins=$((uptime_seconds / 60))
+  if (( mins >= 60 )); then
+    uptime_text="$((mins / 60))h $((mins % 60))m"
+  else
+    uptime_text="${mins}m"
+  fi
+else
+  uptime_text="unknown"
+fi
+
+subject="${HOST} is ready"
+description="Unraid has finished starting and Docker is up and running. Boot readiness confirmed after ${uptime_text}."
+
+if "$NOTIFY_CMD" \
+  -e "Server Ready" \
+  -s "$subject" \
+  -d "$description" \
+  -i warning \
+  -l "/Main"; then
+  : > "$MARKER"
+  logger -t boot-ready-warning "Warning-level ready notification sent for this boot"
+else
+  logger -t boot-ready-warning "Unraid notify command returned an error"
+  exit 1
+fi

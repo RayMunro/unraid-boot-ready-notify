@@ -1,0 +1,71 @@
+#!/bin/bash
+set -u
+
+PLUGIN_ID="boot.ready.warning"
+CANONICAL="boot.ready.warning.plg"
+PERSISTENT="/boot/config/plugins/${CANONICAL}"
+REGISTRATION="/var/log/plugins/${CANONICAL}"
+ICON_NAME="boot.ready.warning.png"
+ICON_FILE="/usr/local/emhttp/plugins/${PLUGIN_ID}/images/${ICON_NAME}"
+PLUGIN_CMD="/usr/local/sbin/plugin"
+STALE_DIR="/boot/config/plugins-stale"
+
+# The Unraid plugin manager executes the plugin's install payload BEFORE it
+# copies the new .plg to /boot/config/plugins and creates its registration
+# symlink. Give the manager time to finish its native registration first.
+sleep 2
+
+for _ in $(seq 1 20); do
+  [[ -f "$PERSISTENT" ]] && break
+  sleep 0.5
+done
+
+if [[ ! -f "$PERSISTENT" ]]; then
+  logger -t boot-ready-warning "post-install check: persistent plugin file not found"
+  exit 0
+fi
+
+# Force the persistent definition to reference the custom PNG. This also
+# repairs a stale older definition if one was accidentally copied from a Mac
+# Downloads folder under the same canonical filename.
+if grep -q 'icon="[^"]*"' "$PERSISTENT"; then
+  sed -i '0,/<PLUGIN /s/icon="[^"]*"/icon="boot.ready.warning.png"/' "$PERSISTENT"
+else
+  sed -i '0,/<PLUGIN /s/>/ icon="boot.ready.warning.png">/' "$PERSISTENT"
+fi
+
+mkdir -p /var/log/plugins "$STALE_DIR"
+
+# Remove any duplicate registrations for the same internal plugin identity.
+for link in /var/log/plugins/*.plg; do
+  [[ -e "$link" || -L "$link" ]] || continue
+  [[ "$link" == "$REGISTRATION" ]] && continue
+  target="$(readlink "$link" 2>/dev/null || true)"
+  [[ -n "$target" && -f "$target" ]] || continue
+  name="$($PLUGIN_CMD name "$target" 2>/dev/null || true)"
+  if [[ "$name" == "$PLUGIN_ID" ]]; then
+    rm -f "$link"
+  fi
+done
+
+# Move duplicate persistent definitions aside so an older copy cannot run on
+# the next boot and put old metadata back into Plugin Manager.
+for file in /boot/config/plugins/*.plg; do
+  [[ -f "$file" ]] || continue
+  [[ "$file" == "$PERSISTENT" ]] && continue
+  name="$($PLUGIN_CMD name "$file" 2>/dev/null || true)"
+  if [[ "$name" == "$PLUGIN_ID" ]]; then
+    base="$(basename "$file")"
+    mv -f "$file" "$STALE_DIR/${base}.duplicate-boot-ready"
+  fi
+done
+
+rm -f "$REGISTRATION"
+ln -s "$PERSISTENT" "$REGISTRATION"
+
+mkdir -p "$(dirname "$ICON_FILE")"
+chmod 0755 "$(dirname "$ICON_FILE")" 2>/dev/null || true
+chmod 0644 "$ICON_FILE" 2>/dev/null || true
+
+logger -t boot-ready-warning "post-install check: PNG icon metadata and plugin registration verified"
+exit 0

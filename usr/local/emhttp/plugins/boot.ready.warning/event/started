@@ -1,0 +1,11 @@
+#!/bin/bash
+PLUGIN_DIR="/usr/local/emhttp/plugins/boot.ready.warning"
+LOG="/var/log/boot-ready-warning.log"
+
+if [[ ! -x "$PLUGIN_DIR/scripts/boot-ready-worker" ]]; then
+  logger -t boot-ready-warning "worker missing: $PLUGIN_DIR/scripts/boot-ready-worker"
+  exit 0
+fi
+
+nohup "$PLUGIN_DIR/scripts/boot-ready-worker" >>"$LOG" 2>&1 </dev/null &
+exit 0

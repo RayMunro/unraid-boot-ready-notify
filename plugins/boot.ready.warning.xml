@@ -1,0 +1,17 @@
+<Plugin>
+  <!-- Required fields -->
+  <Name>Boot Ready Notify</Name>
+  <Overview>Sends a single Warning-level Unraid notification once the server has completed Unraid's native "started" event and the Docker daemon responds to "docker info", so you know the server is fully usable without watching the console. Limited to one successful notification per boot.</Overview>
+  <!-- NOTE: PluginURL must match exactly the URL of the pluginURL attribute in the .plg file -->
+  <PluginURL>https://raw.githubusercontent.com/RayMunro/unraid-boot-ready-notify/main/boot.ready.warning.plg</PluginURL>
+  <PluginAuthor>Ray Munro</PluginAuthor>
+
+  <!-- Optional entries -->
+  <!-- The .plg file already sets the support attribute, so <Support> here is ignored, left out to avoid duplication -->
+  <Project>https://github.com/RayMunro/unraid-boot-ready-notify</Project>
+  <ReadMe>https://raw.githubusercontent.com/RayMunro/unraid-boot-ready-notify/main/README.md</ReadMe>
+  <Category>Tools:</Category>
+  <MinVer>6.12.0</MinVer>
+  <IconFA>bell</IconFA>
+  <License>GPL-3.0-or-later</License>
+</Plugin>

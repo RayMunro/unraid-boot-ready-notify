@@ -1,0 +1,12 @@
+<CommunityApplications>
+  <!-- Required profile -->
+  <Profile>
+Boot Ready Notify sends a single Warning-level Unraid notification once the server has completed Unraid's native started event and the Docker daemon is responsive, so you know the server is fully usable without watching the console. This repository contains the single Boot Ready Notify plugin.
+
+Support and bug reports: https://github.com/RayMunro/unraid-boot-ready-notify/issues
+  </Profile>
+  <!-- Optional web page -->
+  <WebPage>https://github.com/RayMunro/unraid-boot-ready-notify</WebPage>
+  <!-- Optional support and donation links -->
+  <Forum>https://github.com/RayMunro/unraid-boot-ready-notify/issues</Forum>
+</CommunityApplications>

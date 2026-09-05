@@ -1,0 +1,15 @@
+#!/bin/bash
+NOTIFY="/usr/local/emhttp/webGui/scripts/notify"
+HOST="$(hostname -s 2>/dev/null || hostname)"
+
+if [[ ! -x "$NOTIFY" ]]; then
+  echo "Unraid notify command was not found: $NOTIFY" >&2
+  exit 1
+fi
+
+exec "$NOTIFY" \
+  -e "Server Ready Test" \
+  -s "$HOST boot-ready warning test" \
+  -d "This is a Warning-level test from Boot Ready Notify." \
+  -i warning \
+  -l "/Settings/Notifications"

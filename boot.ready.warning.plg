@@ -1,0 +1,383 @@
+<?xml version="1.0" standalone="yes"?>
+<!DOCTYPE PLUGIN [
+<!ENTITY name "boot.ready.warning">
+<!ENTITY author "Ray Munro">
+<!ENTITY version "2026.09.02f">
+<!ENTITY emhttp "/usr/local/emhttp/plugins/&name;">
+<!ENTITY github "RayMunro/unraid-boot-ready-notify">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
+]>
+<PLUGIN name="&name;" author="&author;" version="&version;" min="6.12.0" icon="boot.ready.warning.png"
+        pluginURL="&pluginURL;"
+        support="https://github.com/&github;/issues"
+        project="https://github.com/&github;"
+        readme="https://github.com/&github;#readme">
+
+<CHANGES>
+### 2026.09.02f
+- Fixes the recurring black-bell problem by verifying icon metadata after Unraid finishes its native plugin-registration step.
+- Uses a delayed post-install finalizer because Unraid copies/registers the .plg only after the plugin install payload returns.
+- Removes duplicate Plugin Manager registrations for the same internal plugin identity.
+- Moves duplicate persistent boot.ready.warning definitions to plugins-stale so an older copy cannot restore old icon metadata at the next boot.
+- Distribution filename is versioned to prevent a Mac browser from leaving a newer download as "(1)" while copy commands accidentally reuse an older file.
+- Keeps the custom PNG icon, Warning severity, native started-event trigger, Docker readiness gate, and once-per-boot behaviour.
+
+### 2026.09.02e
+- Permanently fixes Plugin Manager registration by recreating the native /var/log/plugins symlink during every install.
+- Adds a repair-registration helper script and invokes it automatically.
+- Uninstall now removes the registration symlink as well as runtime files.
+- Keeps the custom PNG icon, Warning severity, native started-event trigger, Docker readiness gate, and once-per-boot behaviour.
+
+### 2026.09.02d
+- Adds a native custom PNG icon for the Unraid Plugins tab.
+- Installs the icon under the plugin images directory with a transparent background.
+- Adds a friendly README description displayed by Unraid Plugin Manager.
+- Boot trigger, Docker readiness gate, Warning severity, and once-per-boot behaviour are unchanged.
+
+### 2026.09.02c
+- Uses a new internal plugin identity to avoid Unraid's stale same-plugin registration.
+- Removes stale files/runtime from the earlier boot.ready.notify builds during install.
+- Sends boot-ready and test notifications with Warning severity.
+- Uses Unraid's native started event and waits for Docker readiness.
+</CHANGES>
+
+<!-- Prepare a clean runtime. This is a NEW plugin identity, but remove stale
+     runtime/flash entries from the earlier builds so they cannot fire too. -->
+<FILE Run="/bin/bash">
+<INLINE><![CDATA[
+set -e
+
+pkill -f '/usr/local/emhttp/plugins/boot.ready.notify/scripts/boot-ready-worker' 2>/dev/null || true
+rm -rf /usr/local/emhttp/plugins/boot.ready.notify
+rm -rf /run/boot.ready.notify
+rm -f /var/log/boot-ready-notify.log
+
+# Remove only the OLD plugin definitions/registration markers.
+rm -f /boot/config/plugins/boot-ready-notify.plg
+rm -f /boot/config/plugins/boot.ready.notify.plg
+rm -rf /boot/config/plugins/boot.ready.notify
+rm -f /var/log/plugins/boot-ready-notify.plg
+rm -f /var/log/plugins/boot.ready.notify.plg
+
+mkdir -p /usr/local/emhttp/plugins/boot.ready.warning/event
+mkdir -p /usr/local/emhttp/plugins/boot.ready.warning/scripts
+mkdir -p /usr/local/emhttp/plugins/boot.ready.warning/images
+]]></INLINE>
+</FILE>
+
+<!-- Custom Plugins-tab icon. Unraid resolves a .png icon name from
+     /usr/local/emhttp/plugins/<plugin>/images/ first. -->
+<FILE Run="/bin/bash">
+<INLINE><![CDATA[
+set -e
+mkdir -p /usr/local/emhttp/plugins/boot.ready.warning/images
+base64 -d > /usr/local/emhttp/plugins/boot.ready.warning/images/boot.ready.warning.png <<'BOOT_READY_ICON_B64'
+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
+BOOT_READY_ICON_B64
+chmod 0644 /usr/local/emhttp/plugins/boot.ready.warning/images/boot.ready.warning.png
+]]></INLINE>
+</FILE>
+
+<FILE Name="&emhttp;/README.md" Mode="0644">
+<INLINE><![CDATA[
+# Boot Ready Notify
+
+Sends a **Warning-level Unraid notification** once the server has completed Unraid's native `started` event and the Docker daemon is responsive.
+
+The notification is sent through Unraid's own notification subsystem and is limited to one successful notification per OS boot.
+
+Version 2026.09.02f also verifies its Plugin Manager registration and custom PNG icon metadata after Unraid completes the native install registration step.
+]]></INLINE>
+</FILE>
+
+<FILE Name="&emhttp;/event/started" Mode="0755">
+<INLINE><![CDATA[
+#!/bin/bash
+PLUGIN_DIR="/usr/local/emhttp/plugins/boot.ready.warning"
+LOG="/var/log/boot-ready-warning.log"
+
+if [[ ! -x "$PLUGIN_DIR/scripts/boot-ready-worker" ]]; then
+  logger -t boot-ready-warning "worker missing: $PLUGIN_DIR/scripts/boot-ready-worker"
+  exit 0
+fi
+
+nohup "$PLUGIN_DIR/scripts/boot-ready-worker" >>"$LOG" 2>&1 </dev/null &
+exit 0
+]]></INLINE>
+</FILE>
+
+<FILE Name="&emhttp;/scripts/boot-ready-worker" Mode="0755">
+<INLINE><![CDATA[
+#!/bin/bash
+set -u
+
+PLUGIN="boot.ready.warning"
+RUN_DIR="${BOOT_READY_RUN_DIR:-/run/$PLUGIN}"
+MARKER="$RUN_DIR/notified"
+LOCK_DIR="$RUN_DIR/worker.lock"
+DOCKER_SOCKET="${BOOT_READY_DOCKER_SOCKET:-/var/run/docker.sock}"
+DOCKER_CMD="${BOOT_READY_DOCKER_CMD:-/usr/bin/docker}"
+NOTIFY_CMD="${BOOT_READY_NOTIFY_CMD:-/usr/local/emhttp/webGui/scripts/notify}"
+DOCKER_CFG="${BOOT_READY_DOCKER_CFG:-/boot/config/docker.cfg}"
+WAIT_SECONDS="${BOOT_READY_WAIT_SECONDS:-600}"
+POLL_SECONDS="${BOOT_READY_POLL_SECONDS:-2}"
+HOST="$(hostname -s 2>/dev/null || hostname)"
+
+mkdir -p "$RUN_DIR"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  exit 0
+fi
+trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+
+[[ -e "$MARKER" ]] && exit 0
+
+if [[ -r "$DOCKER_CFG" ]]; then
+  docker_enabled="$(awk -F'=' '/^DOCKER_ENABLED=/{gsub(/["\047[:space:]]/,"",$2); print tolower($2); exit}' "$DOCKER_CFG" 2>/dev/null)"
+  if [[ -n "$docker_enabled" && "$docker_enabled" != "yes" ]]; then
+    logger -t boot-ready-warning "Unraid started event received, but Docker is disabled; no ready notification sent"
+    exit 0
+  fi
+fi
+
+logger -t boot-ready-warning "Unraid started event received; waiting for Docker readiness"
+
+deadline=$(( $(date +%s) + WAIT_SECONDS ))
+docker_ready=0
+while (( $(date +%s) <= deadline )); do
+  if [[ -S "$DOCKER_SOCKET" && -x "$DOCKER_CMD" ]] && "$DOCKER_CMD" info >/dev/null 2>&1; then
+    docker_ready=1
+    break
+  fi
+  sleep "$POLL_SECONDS"
+done
+
+if (( docker_ready != 1 )); then
+  logger -t boot-ready-warning "Docker did not become ready within ${WAIT_SECONDS}s; no ready notification sent"
+  exit 0
+fi
+
+if [[ ! -x "$NOTIFY_CMD" ]]; then
+  logger -t boot-ready-warning "Unraid notify command not found: $NOTIFY_CMD"
+  exit 0
+fi
+
+uptime_seconds="$(cut -d. -f1 /proc/uptime 2>/dev/null || echo 0)"
+if [[ "$uptime_seconds" =~ ^[0-9]+$ ]]; then
+  mins=$((uptime_seconds / 60))
+  if (( mins >= 60 )); then
+    uptime_text="$((mins / 60))h $((mins % 60))m"
+  else
+    uptime_text="${mins}m"
+  fi
+else
+  uptime_text="unknown"
+fi
+
+subject="${HOST} is ready"
+description="Unraid has finished starting and Docker is up and running. Boot readiness confirmed after ${uptime_text}."
+
+if "$NOTIFY_CMD" \
+  -e "Server Ready" \
+  -s "$subject" \
+  -d "$description" \
+  -i warning \
+  -l "/Main"; then
+  : > "$MARKER"
+  logger -t boot-ready-warning "Warning-level ready notification sent for this boot"
+else
+  logger -t boot-ready-warning "Unraid notify command returned an error"
+  exit 1
+fi
+]]></INLINE>
+</FILE>
+
+<FILE Name="&emhttp;/scripts/test-notification" Mode="0755">
+<INLINE><![CDATA[
+#!/bin/bash
+NOTIFY="/usr/local/emhttp/webGui/scripts/notify"
+HOST="$(hostname -s 2>/dev/null || hostname)"
+
+if [[ ! -x "$NOTIFY" ]]; then
+  echo "Unraid notify command was not found: $NOTIFY" >&2
+  exit 1
+fi
+
+exec "$NOTIFY" \
+  -e "Server Ready Test" \
+  -s "$HOST boot-ready warning test" \
+  -d "This is a Warning-level test from Boot Ready Notify." \
+  -i warning \
+  -l "/Settings/Notifications"
+]]></INLINE>
+</FILE>
+
+<FILE Name="&emhttp;/scripts/finalize-install" Mode="0755">
+<INLINE><![CDATA[
+#!/bin/bash
+set -u
+
+PLUGIN_ID="boot.ready.warning"
+CANONICAL="boot.ready.warning.plg"
+PERSISTENT="/boot/config/plugins/${CANONICAL}"
+REGISTRATION="/var/log/plugins/${CANONICAL}"
+ICON_NAME="boot.ready.warning.png"
+ICON_FILE="/usr/local/emhttp/plugins/${PLUGIN_ID}/images/${ICON_NAME}"
+PLUGIN_CMD="/usr/local/sbin/plugin"
+STALE_DIR="/boot/config/plugins-stale"
+
+# The Unraid plugin manager executes the plugin's install payload BEFORE it
+# copies the new .plg to /boot/config/plugins and creates its registration
+# symlink. Give the manager time to finish its native registration first.
+sleep 2
+
+for _ in $(seq 1 20); do
+  [[ -f "$PERSISTENT" ]] && break
+  sleep 0.5
+done
+
+if [[ ! -f "$PERSISTENT" ]]; then
+  logger -t boot-ready-warning "post-install check: persistent plugin file not found"
+  exit 0
+fi
+
+# Force the persistent definition to reference the custom PNG. This also
+# repairs a stale older definition if one was accidentally copied from a Mac
+# Downloads folder under the same canonical filename.
+if grep -q 'icon="[^"]*"' "$PERSISTENT"; then
+  sed -i '0,/<PLUGIN /s/icon="[^"]*"/icon="boot.ready.warning.png"/' "$PERSISTENT"
+else
+  sed -i '0,/<PLUGIN /s/>/ icon="boot.ready.warning.png">/' "$PERSISTENT"
+fi
+
+mkdir -p /var/log/plugins "$STALE_DIR"
+
+# Remove any duplicate registrations for the same internal plugin identity.
+for link in /var/log/plugins/*.plg; do
+  [[ -e "$link" || -L "$link" ]] || continue
+  [[ "$link" == "$REGISTRATION" ]] && continue
+  target="$(readlink "$link" 2>/dev/null || true)"
+  [[ -n "$target" && -f "$target" ]] || continue
+  name="$($PLUGIN_CMD name "$target" 2>/dev/null || true)"
+  if [[ "$name" == "$PLUGIN_ID" ]]; then
+    rm -f "$link"
+  fi
+done
+
+# Move duplicate persistent definitions aside so an older copy cannot run on
+# the next boot and put old metadata back into Plugin Manager.
+for file in /boot/config/plugins/*.plg; do
+  [[ -f "$file" ]] || continue
+  [[ "$file" == "$PERSISTENT" ]] && continue
+  name="$($PLUGIN_CMD name "$file" 2>/dev/null || true)"
+  if [[ "$name" == "$PLUGIN_ID" ]]; then
+    base="$(basename "$file")"
+    mv -f "$file" "$STALE_DIR/${base}.duplicate-boot-ready"
+  fi
+done
+
+rm -f "$REGISTRATION"
+ln -s "$PERSISTENT" "$REGISTRATION"
+
+mkdir -p "$(dirname "$ICON_FILE")"
+chmod 0755 "$(dirname "$ICON_FILE")" 2>/dev/null || true
+chmod 0644 "$ICON_FILE" 2>/dev/null || true
+
+logger -t boot-ready-warning "post-install check: PNG icon metadata and plugin registration verified"
+exit 0
+]]></INLINE>
+</FILE>
+
+<FILE Run="/bin/bash">
+<INLINE><![CDATA[
+set -e
+chmod 0755 /usr/local/emhttp/plugins/boot.ready.warning/event/started
+chmod 0755 /usr/local/emhttp/plugins/boot.ready.warning/scripts/boot-ready-worker
+chmod 0755 /usr/local/emhttp/plugins/boot.ready.warning/scripts/test-notification
+chmod 0755 /usr/local/emhttp/plugins/boot.ready.warning/scripts/finalize-install
+
+# Unraid itself copies/registers the .plg after this install payload returns.
+# Run the final consistency check in the background so it executes afterwards.
+nohup /usr/local/emhttp/plugins/boot.ready.warning/scripts/finalize-install \
+  >/tmp/boot.ready.warning-finalize.log 2>&1 </dev/null &
+
+if [ -x /usr/local/emhttp/webGui/scripts/notify ]; then
+  /usr/local/emhttp/webGui/scripts/notify init >/dev/null 2>&1 || true
+fi
+
+echo ""
+echo "=============================================================="
+echo " Boot Ready Notify 2026.09.02f installed successfully."
+echo " Internal ID: boot.ready.warning"
+echo " Severity:    WARNING"
+echo " Trigger:     Unraid native 'started' event"
+echo " Docker gate: docker info must succeed"
+echo "=============================================================="
+echo ""
+]]></INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE><![CDATA[
+pkill -f '/usr/local/emhttp/plugins/boot.ready.warning/scripts/boot-ready-worker' 2>/dev/null || true
+rm -rf /usr/local/emhttp/plugins/boot.ready.warning
+rm -rf /run/boot.ready.warning
+rm -f /var/log/boot-ready-warning.log
+rm -f /var/log/plugins/boot.ready.warning.plg
+echo "Boot Ready Notify (warning build) removed."
+]]></INLINE>
+</FILE>
+
+</PLUGIN>
