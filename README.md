@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="usr/local/emhttp/plugins/boot.ready.warning/images/boot.ready.warning.png" width="160" alt="Boot Ready Notify icon" />
+</p>
+
 # Boot Ready Notify
 
 Sends a **Warning-level Unraid notification** once the server has completed
