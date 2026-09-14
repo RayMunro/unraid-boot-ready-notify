@@ -5,3 +5,5 @@ Sends a **Warning-level Unraid notification** once the server has completed Unra
 The notification is sent through Unraid's own notification subsystem and is limited to one successful notification per OS boot.
 
 Version 2026.09.02f also verifies its Plugin Manager registration and custom PNG icon metadata after Unraid completes the native install registration step.
+
+Copyright © Ray Munro 2026. All rights reserved.

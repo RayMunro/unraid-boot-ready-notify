@@ -2,7 +2,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name "boot.ready.warning">
 <!ENTITY author "Ray Munro">
-<!ENTITY version "2026.09.02f">
+<!ENTITY version "2026.09.14">
 <!ENTITY emhttp "/usr/local/emhttp/plugins/&name;">
 <!ENTITY github "RayMunro/unraid-boot-ready-notify">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
@@ -14,6 +14,9 @@
         readme="https://github.com/&github;#readme">
 
 <CHANGES>
+### 2026.09.14
+- Add a copyright notice to the README shown in the Plugins tab, matching the other HackerHog plugins.
+
 ### 2026.09.02f
 - Fixes the recurring black-bell problem by verifying icon metadata after Unraid finishes its native plugin-registration step.
 - Uses a delayed post-install finalizer because Unraid copies/registers the .plg only after the plugin install payload returns.
@@ -140,6 +143,8 @@ Sends a **Warning-level Unraid notification** once the server has completed Unra
 The notification is sent through Unraid's own notification subsystem and is limited to one successful notification per OS boot.
 
 Version 2026.09.02f also verifies its Plugin Manager registration and custom PNG icon metadata after Unraid completes the native install registration step.
+
+Copyright © Ray Munro 2026. All rights reserved.
 ]]></INLINE>
 </FILE>
 
@@ -359,7 +364,7 @@ fi
 
 echo ""
 echo "=============================================================="
-echo " Boot Ready Notify 2026.09.02f installed successfully."
+echo " Boot Ready Notify 2026.09.14 installed successfully."
 echo " Internal ID: boot.ready.warning"
 echo " Severity:    WARNING"
 echo " Trigger:     Unraid native 'started' event"
